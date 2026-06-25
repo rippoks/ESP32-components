@@ -1,0 +1,132 @@
+menu "OTA Manager"
+
+    config OTA_TRANSPORT_HTTPS
+        bool "Use HTTPS transport"
+        default y
+        help
+            Use HTTPS transport for downloading firmware. If disabled, falls back
+            to plain HTTP.
+
+    config OTA_SERVER_URL
+        string "Default firmware binary URL"
+        default ""
+        help
+            Default URL for the firmware binary (and optional .version file).
+            Overridable at runtime via the ota_manager_config_t server_url field.
+            Must be non-empty by the time an OTA check is triggered.
+
+    config OTA_VERSION_CHECK
+        bool "Reject update unless remote version is strictly newer"
+        default y
+        help
+            When enabled, the component fetches a .version file from the server
+            and compares it against the running image version. The update is
+            skipped if the remote version is not strictly newer.
+
+    config OTA_ROLLBACK_ENABLED
+        bool "Enable rollback on boot failure"
+        default y
+        select BOOTLOADER_APP_ROLLBACK_ENABLE
+        help
+            Enable OTA rollback support. Requires two OTA partitions (ota_0 and
+            ota_1). Selects BOOTLOADER_APP_ROLLBACK_ENABLE automatically.
+
+    config OTA_HEALTHCHECK_TIMEOUT_SEC
+        int "Healthcheck timeout in seconds (0 = disabled)"
+        default 0
+        range 0 3600
+        depends on OTA_ROLLBACK_ENABLED
+        help
+            If greater than 0 and rollback is enabled, the component arms a
+            one-shot timer at boot. If ota_manager_confirm_valid() is not called
+            within this window, the component invalidates the running image and
+            reboots into the previous one. Set to 0 to disable (app is fully
+            responsible for confirming validity).
+
+    choice OTA_TRIGGER_MODE
+        prompt "OTA trigger mode"
+        default OTA_TRIGGER_POLL
+        help
+            Selects how OTA updates are initiated. Poll mode spawns a background
+            task that checks for updates on a timer. Manual mode requires the
+            application to call ota_manager_check_and_update() directly.
+
+        config OTA_TRIGGER_POLL
+            bool "Poll (background task)"
+            help
+                A background FreeRTOS task polls the update server on a
+                configurable timer interval with optional random jitter.
+
+        config OTA_TRIGGER_MANUAL
+            bool "Manual (app-driven)"
+            help
+                No poll task is started. The application triggers OTA checks
+                by calling ota_manager_check_and_update().
+
+    endchoice
+
+    config OTA_POLL_INTERVAL_SEC
+        int "Poll interval in seconds"
+        default 3600
+        range 60 86400
+        depends on OTA_TRIGGER_POLL
+        help
+            How often (in seconds) the background poll task checks for a new
+            firmware version. Range: 60 to 86400 (1 minute to 24 hours).
+
+    config OTA_POLL_JITTER_PCT
+        int "Poll jitter as percentage of interval"
+        default 10
+        range 0 50
+        depends on OTA_TRIGGER_POLL
+        help
+            Random jitter added to each poll interval, expressed as a percentage
+            of the configured interval. Prevents fleet-wide update stampedes when
+            many devices boot simultaneously. Range: 0 (no jitter) to 50%.
+
+    config OTA_AUTO_REBOOT
+        bool "Reboot automatically after successful OTA apply"
+        default y
+        help
+            When enabled, ota_manager_check_and_update() reboots the device
+            immediately after a successful apply. When disabled, the function
+            fires OTA_EVENT_SUCCESS and returns ESP_OK so the application can
+            perform a graceful shutdown before rebooting.
+            NOTE: Poll mode always reboots after a successful apply regardless
+            of this setting. OTA_AUTO_REBOOT=n is only meaningful in manual
+            mode where the application controls the reboot cadence.
+
+    config OTA_PROGRESS_CALLBACK
+        bool "Enable progress/event callback"
+        default y
+        help
+            Enable registration of a progress and event callback via the
+            ota_manager_config_t event_cb field. Disable to save a small amount
+            of code space if callbacks are not needed.
+
+    config OTA_TASK_STACK_SIZE
+        int "OTA background task stack size (bytes)"
+        default 8192
+        help
+            Stack size in bytes for the background OTA poll task. Increase if
+            you observe stack overflow panics during OTA operations.
+
+    config OTA_TASK_PRIORITY
+        int "OTA background task FreeRTOS priority"
+        default 5
+        help
+            FreeRTOS priority for the background OTA poll task. Must be lower
+            than time-critical tasks but high enough to complete downloads in
+            a reasonable time.
+
+    config OTA_HTTPS_INSECURE
+        bool "Disable TLS server authentication (DEVELOPMENT ONLY)"
+        default n
+        depends on OTA_TRANSPORT_HTTPS
+        help
+            WARNING: Development use only. Disables TLS certificate chain
+            verification and hostname checking entirely. This makes the HTTPS
+            transport vulnerable to man-in-the-middle attacks. NEVER enable
+            this option in a production build.
+
+endmenu

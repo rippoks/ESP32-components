@@ -1,0 +1,19 @@
+idf_component_register(
+    SRCS
+        "src/ota_manager.c"
+        $<$<BOOL:${CONFIG_OTA_TRANSPORT_HTTPS}>:src/ota_transport_https.c>
+        $<$<BOOL:${CONFIG_OTA_VERSION_CHECK}>:src/ota_version.c>
+        $<$<NOT:$<BOOL:${CONFIG_OTA_TRANSPORT_HTTPS}>>:src/ota_transport_http.c>
+    INCLUDE_DIRS "include"
+    REQUIRES
+        esp_http_client
+        esp_https_ota
+        esp_partition
+        nvs_flash
+        app_update
+        esp_app_format
+        esp_hw_support
+        freertos
+        esp_timer
+        log
+)

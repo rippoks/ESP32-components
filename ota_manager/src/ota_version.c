@@ -16,6 +16,10 @@ static bool parse_semver(const char *s, unsigned *maj, unsigned *min, unsigned *
 
 #ifndef UNIT_TEST
 esp_err_t ota_version_fetch(const char *base_url, char *out_buf, size_t buf_len) {
+    if (out_buf == NULL || buf_len == 0) {
+        return ESP_ERR_INVALID_SIZE;
+    }
+
     char url[256];
     int n = snprintf(url, sizeof(url), "%s.version", base_url);
     if (n < 0 || (size_t)n >= sizeof(url)) {

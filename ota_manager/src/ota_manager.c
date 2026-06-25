@@ -110,7 +110,7 @@ esp_err_t ota_manager_init(const ota_manager_config_t *cfg)
     esp_ota_img_states_t state;
     if (esp_ota_get_state_partition(esp_ota_get_running_partition(), &state) == ESP_OK) {
         if (state == ESP_OTA_IMG_PENDING_VERIFY) {
-            ESP_LOGW("OTA_MGR", "App is PENDING_VERIFY; call ota_manager_confirm_valid() once healthy");
+            ESP_LOGW(TAG, "App is PENDING_VERIFY; call ota_manager_confirm_valid() once healthy");
         }
     }
 

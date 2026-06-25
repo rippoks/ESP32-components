@@ -3,4 +3,4 @@ description: "Configurable drop-in OTA manager for ESP-IDF 5.x"
 # url is informational only. Consuming projects reference this component by
 # local path (see README). For portability across machines/CI, prefer a
 # relative path or a git reference over a machine-specific absolute path.
-url: "https://github.com/<owner>/ESP32-components"
+url: "https://github.com/rippoks/ESP32-components"

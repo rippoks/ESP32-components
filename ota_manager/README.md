@@ -48,7 +48,12 @@ dependencies:
 
 ## Partition Table
 
-The minimum required partition layout. Save as `partitions.csv` in your project root and reference it in `CMakeLists.txt` via `set(PARTITION_TABLE_CSV_FILE partitions.csv)` or in `sdkconfig` via `CONFIG_PARTITION_TABLE_CUSTOM_FILENAME`.
+The minimum required partition layout. Save it as `partitions.csv` in your project root and enable the custom partition table in `sdkconfig.defaults` (or via `idf.py menuconfig` → *Partition Table*):
+
+```
+CONFIG_PARTITION_TABLE_CUSTOM=y
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
+```
 
 ```csv
 # Name,   Type, SubType,  Offset,   Size,     Flags
@@ -96,7 +101,7 @@ The public API is declared in `include/ota_manager.h`. Functions:
 - `ota_manager_confirm_valid()` — mark the running image healthy; cancels rollback and stops the healthcheck timer
 - `ota_manager_rollback()` — trigger immediate rollback to the previous image
 - `ota_manager_current_version()` — return the running app version string (never NULL)
-- `ota_manager_get_state()` — return the current `ota_manager_state_t` (`IDLE`, `CHECKING`, `DOWNLOADING`, `APPLYING`)
+- `ota_manager_get_state()` — return the current `ota_manager_state_t` (`OTA_MGR_STATE_IDLE`, `OTA_MGR_STATE_CHECKING`, `OTA_MGR_STATE_DOWNLOADING`, `OTA_MGR_STATE_APPLYING`)
 
 The event callback receives `ota_event_data_t` with one of these events: `OTA_EVENT_CHECK_START`, `OTA_EVENT_UPDATE_AVAILABLE`, `OTA_EVENT_UP_TO_DATE`, `OTA_EVENT_DOWNLOAD_START`, `OTA_EVENT_PROGRESS`, `OTA_EVENT_DOWNLOAD_DONE`, `OTA_EVENT_APPLYING`, `OTA_EVENT_SUCCESS`, `OTA_EVENT_FAILED`, `OTA_EVENT_ROLLBACK_TRIGGERED`. The `data.progress_pct` field (0–100) is valid on `OTA_EVENT_PROGRESS`; `data.err` is valid on `OTA_EVENT_FAILED`. See the header for the full struct definitions and per-function return codes.
 
@@ -167,7 +172,7 @@ The component derives the version endpoint URL by appending `.version` to the fi
 
 > **Warning: development-only flags must never be enabled in production firmware.**
 
-`OTA_HTTPS_INSECURE=y` disables TLS server authentication entirely — no CA verification, no hostname check. The plain-HTTP transport (`OTA_TRANSPORT_HTTPS=n`) provides no transport security at all. Either path allows a network attacker to serve arbitrary firmware to the device. There is no image signing in v1; the component does not verify the cryptographic authenticity of the downloaded binary beyond the ESP-IDF image descriptor check. Image signing (secure boot / RSA/ECDSA) is the first v2 candidate. For production, use HTTPS with `OTA_HTTPS_INSECURE=n` and `CONFIG_MBEDTLS_CERTIFICATE_BUNDLE=y` so the server certificate is verified against the embedded CA bundle. If you maintain your own CA, embed it via `CONFIG_MBEDTLS_CUSTOM_CERTIFICATE`.
+`OTA_HTTPS_INSECURE=y` disables TLS server authentication entirely — no CA verification, no hostname check. The plain-HTTP transport (`OTA_TRANSPORT_HTTPS=n`) provides no transport security at all. Either path allows a network attacker to serve arbitrary firmware to the device. There is no image signing in v1; the component does not verify the cryptographic authenticity of the downloaded binary beyond the ESP-IDF image descriptor check. Image signing (secure boot / RSA/ECDSA) is the first v2 candidate. For production, use HTTPS with `OTA_HTTPS_INSECURE=n` and `CONFIG_MBEDTLS_CERTIFICATE_BUNDLE=y` so the server certificate is verified against the embedded CA bundle. In secure mode the HTTPS transport attaches the bundle via `esp_crt_bundle_attach`; v1 does not pass a per-request `cert_pem`, so serving firmware from a host whose CA is outside the bundle requires customizing the bundle itself (`CONFIG_MBEDTLS_CUSTOM_CERTIFICATE_BUNDLE`).
 
 ---
 

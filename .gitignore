@@ -9,3 +9,7 @@ sdkconfig.old
 
 # SDD workspace (also self-ignored)
 .superpowers/
+
+# Editor / tooling
+.claude/
+.vscode/

@@ -2,9 +2,13 @@
 #include <stdio.h>
 
 #ifndef UNIT_TEST
+#include "sdkconfig.h"
 #include "esp_log.h"
 #include "esp_http_client.h"
 #include <string.h>
+#if CONFIG_OTA_TRANSPORT_HTTPS && !CONFIG_OTA_HTTPS_INSECURE
+#include "esp_crt_bundle.h"
+#endif
 static const char *TAG = "OTA_MGR";
 #endif
 
@@ -26,20 +30,35 @@ esp_err_t ota_version_fetch(const char *base_url, char *out_buf, size_t buf_len)
         return ESP_ERR_INVALID_SIZE;
     }
 
+    /* The .version endpoint shares the firmware URL's scheme. When the HTTPS
+     * transport is selected, the URL is https:// and the request needs the same
+     * TLS trust configuration as the binary download, or the handshake fails
+     * for lack of a CA. Mirror ota_transport_https.c. */
     esp_http_client_config_t cfg = { .url = url, .timeout_ms = 5000 };
+#if CONFIG_OTA_TRANSPORT_HTTPS
+#if CONFIG_OTA_HTTPS_INSECURE
+    cfg.crt_bundle_attach           = NULL;
+    cfg.skip_cert_common_name_check = true;
+#else
+    cfg.crt_bundle_attach           = esp_crt_bundle_attach;
+#endif
+#endif
     esp_http_client_handle_t client = esp_http_client_init(&cfg);
     if (!client) {
         return ESP_FAIL;
     }
 
     if (esp_http_client_open(client, 0) != ESP_OK) {
+        ESP_LOGE(TAG, "version fetch: connection open failed");
         esp_http_client_cleanup(client);
         return ESP_FAIL;
     }
 
     esp_http_client_fetch_headers(client);
 
-    if (esp_http_client_get_status_code(client) != 200) {
+    int status = esp_http_client_get_status_code(client);
+    if (status != 200) {
+        ESP_LOGE(TAG, "version fetch: unexpected HTTP status %d", status);
         esp_http_client_close(client);
         esp_http_client_cleanup(client);
         return ESP_FAIL;

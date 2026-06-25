@@ -4,7 +4,7 @@
 #include "esp_http_client.h"
 #include "esp_app_desc.h"
 #include "esp_log.h"
-#if !defined(CONFIG_OTA_HTTPS_INSECURE) || !CONFIG_OTA_HTTPS_INSECURE
+#if !CONFIG_OTA_HTTPS_INSECURE
 #include "esp_crt_bundle.h"
 #endif
 
@@ -89,7 +89,7 @@ esp_err_t ota_transport_https_perform(const char *url, ota_event_cb_t cb, void *
     /* Step 4: Download loop with throttled progress */
     fire_evt(OTA_EVENT_DOWNLOAD_START, cb, cb_ctx);
 
-    int last_pct = -1;
+    int last_pct = -10;  /* bucket -1, so the first chunk reports 0% */
     while (1) {
         err = esp_https_ota_perform(handle);
         if (err != ESP_ERR_HTTPS_OTA_IN_PROGRESS) {

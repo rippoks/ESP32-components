@@ -71,6 +71,13 @@ esp_err_t ota_transport_http_perform(const char *url, ota_event_cb_t cb, void *c
 
     /* Step 4: Begin OTA on next update partition */
     const esp_partition_t *part = esp_ota_get_next_update_partition(NULL);
+    if (part == NULL) {
+        ESP_LOGE(TAG, "no OTA update partition available");
+        fire_failed(ESP_ERR_NOT_FOUND, cb, cb_ctx);
+        esp_http_client_close(client);
+        esp_http_client_cleanup(client);
+        return ESP_ERR_NOT_FOUND;
+    }
     esp_ota_handle_t ota = 0;
     err = esp_ota_begin(part, OTA_WITH_SEQUENTIAL_WRITES, &ota);
     if (err != ESP_OK) {

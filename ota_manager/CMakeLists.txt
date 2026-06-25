@@ -16,4 +16,6 @@ idf_component_register(
         freertos
         esp_timer
         log
+    PRIV_REQUIRES
+        mbedtls
 )
